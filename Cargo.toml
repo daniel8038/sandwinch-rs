@@ -4,3 +4,18 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
+fern = { version = "0.6.2", features = ["colored"] }
+tokio = { version = "1.41.1", features = ["full"] }
+tokio-stream = "0.1.16"
+dotenv = "0.15.0"
+anyhow = "1.0.93"
+chrono = "0.4.38"
+log = "0.4.22"
+rand = "0.8.5"
+# ether
+ethers = { version = "2.0", features = ["ws","ipc","abigen"] }
+ethers-core = "2.0"
+ethers-providers = { version = "2.0", features = ["ws","ipc"] }
+ethers-contract = "2.0"
+# 添加 winapi 依赖并启用 winerror feature
+winapi = { version = "0.3", features = ["winerror"] }
