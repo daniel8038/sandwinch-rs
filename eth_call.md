@@ -7,6 +7,10 @@ eth_call 是以太坊的一个重要 RPC 方法，它用于执行智能合约的
 - 不消耗 gas (虽然仍需设置 gas limit 来防止无限循环)
 
 2. **主要用途**:
+   典型的示例就是模拟调用，不管是合约的 get 函数的读取 还是发送的是一笔写入操做
+   都可以执行 只不过不会修改区块链状态
+   即时结果：立即返回执行结果
+   比如 wagmi 的 simulateContract 都是底层的 eth_call
 
 ```javascript
 // 典型的 eth_call 参数结构
