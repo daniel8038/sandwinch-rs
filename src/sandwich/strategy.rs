@@ -2,6 +2,7 @@ use std::{collections::HashMap, sync::Arc};
 
 use crate::{
     common::{
+        alert::Alert,
         constants::Env,
         pools::{load_all_pools, Pool},
         tokens::load_all_tokens,
@@ -23,13 +24,13 @@ pub async fn run_sandwich_strategy(provider: Arc<Provider<Ws>>, event_sender: Se
     let (pools, prev_pool_id) = load_all_pools(env.wss_url.clone(), 10000000, 50000)
         .await
         .unwrap();
-    // 获取所有token
+    // 根据最新区块获取池子所有token信息 并进行表绑定
     let block_number = provider.get_block_number().await.unwrap();
     let tokens_map = load_all_tokens(&provider, block_number, &pools, prev_pool_id)
         .await
         .unwrap();
     info!("Tokens map count: {:?}", tokens_map.len());
-    // 根据获取的所有的信息  过滤掉没有 池子代币信息的 池子
+    // 过滤掉没有存储token信息的池子
     let pools_vec: Vec<Pool> = pools
         .into_iter()
         .filter(|p| {
@@ -60,6 +61,9 @@ pub async fn run_sandwich_strategy(provider: Arc<Provider<Ws>>, event_sender: Se
             block.base_fee_per_gas.unwrap(),
         ),
     };
+    // 创建Tg Alert
+    let alert = Alert::new();
+
     loop {
         match event_receiver.recv().await {
             Ok(event) => match event {
