@@ -76,7 +76,7 @@ impl From<StringRecord> for Pool {
     }
 }
 // 加载所有的pool
-pub async fn load_add_pools(
+pub async fn load_all_pools(
     wss_url: String,
     from_block: u64,
     chunk: u64,
@@ -165,6 +165,7 @@ pub async fn load_add_pools(
             break;
         }
         block_range.push((start_idx, end_idx));
+        blocks_processed += chunk;
     }
     info!("Block range: {:?}", block_range);
     let pb = ProgressBar::new(block_range.len() as u64);
@@ -210,7 +211,8 @@ pub async fn load_add_pools(
         }
         if (pool.id as i64) > last_id {
             // 当你调用 writer.serialize() 时，数据通常会先存在内存缓冲区中
-            // // 数据可能还在缓冲区
+            // 数据可能还在缓冲区
+            // 格式化pool 并写入csv
             writer.serialize(pool.cache_row())?;
             added += 1;
         }

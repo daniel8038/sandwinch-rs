@@ -1,7 +1,10 @@
 use anyhow::{Ok, Result};
-use ethers::types::U256;
+use ethers::{
+    signers::{LocalWallet, Signer},
+    types::{H160, U256},
+};
 use fern::colors::{Color, ColoredLevelConfig};
-use rand::Rng;
+use rand::{thread_rng, Rng};
 
 pub fn setup_logger() -> Result<()> {
     let colors = ColoredLevelConfig {
@@ -55,4 +58,9 @@ pub fn calculate_next_block_base_fee(
 
     let seed = rand::thread_rng().gen_range(0..9);
     new_base_fee + seed
+}
+pub fn create_new_wallet() -> (LocalWallet, H160) {
+    let wallet = LocalWallet::new(&mut thread_rng());
+    let address = wallet.address();
+    (wallet, address)
 }
