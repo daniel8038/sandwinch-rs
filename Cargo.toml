@@ -10,6 +10,7 @@ tokio-stream = "0.1.16"
 dotenv = "0.15.0"
 anyhow = "1.0.93"
 chrono = "0.4.38"
+teloxide = { version = "0.13", features = ["macros"] }
 log = "0.4.22"
 rand = "0.8.5"
 csv = "1.3.1"

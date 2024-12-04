@@ -1,3 +1,4 @@
+pub mod alert;
 pub mod bytecoode;
 pub mod constants;
 pub mod pools;
