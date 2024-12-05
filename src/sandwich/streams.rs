@@ -1,25 +1,37 @@
-use std::sync::Arc;
+////////////////////////////////////////
+////区块与pendingTx事件监听///
+////////////////////////////////////////
 
 use crate::common::utils::calculate_next_block_base_fee;
 use ethers::types::*;
 use ethers_providers::{Middleware, Provider, Ws};
+use std::sync::Arc;
 use tokio::sync::broadcast::Sender;
 use tokio_stream::StreamExt;
+/// 新区块的信息
 #[derive(Default, Debug, Clone)]
 pub struct NewBlock {
+    /// 区块号
     pub block_number: U64,
+    /// 当前区块的基础 gas 费用
     pub base_fee: U256,
+    /// 预估的下一个区块基础 gas 费用
     pub next_base_fee: U256,
 }
+/// 待处理交易的信息
 #[derive(Default, Debug, Clone)]
 pub struct NewPendingTx {
+    /// 交易被添加时的区块号。None 表示刚收到还未分配区块号
     pub added_block: Option<U64>,
+    /// 交易的完整信息,包含 gas、nonce、数据等
     pub tx: Transaction,
 }
-
+/// 事件枚举,用于在不同组件间传递区块和交易信息
 #[derive(Debug, Clone)]
 pub enum Event {
+    /// 新区块事件,包含区块信息
     Block(NewBlock),
+    /// 新的待处理交易事件
     PendingTx(NewPendingTx),
 }
 // 新区快

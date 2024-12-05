@@ -7,14 +7,21 @@ use ethers_providers::{Provider, Ws};
 use std::str::FromStr;
 use std::{collections::HashMap, sync::Arc};
 use url::Url;
-
+/// 负责执行交易的核心组件,包含与区块链和 MEV 构建者交互所需的所有信息
 pub struct Executor {
+    /// 以太坊节点的 WebSocket Provider
     pub provider: Arc<Provider<Ws>>,
+    /// 所需合约的 ABI 集合
     pub abi: Abi,
+    /// 机器人拥有者的钱包,用于签署交易
     pub owner: LocalWallet,
+    /// 用于与 MEV 构建者交互的身份钱包
     pub identity: LocalWallet,
+    /// 三明治机器人合约的地址
     pub bot_address: H160,
+    /// MEV 构建者的 URL 映射,key 是构建者名称,value 是其 RPC URL
     pub builder_urls: HashMap<String, Url>,
+    /// 带有 Flashbots 中间件的签名客户端,用于提交 bundle 交易
     pub client: SignerMiddleware<FlashbotsMiddleware<Arc<Provider<Ws>>, LocalWallet>, LocalWallet>,
 }
 impl Executor {

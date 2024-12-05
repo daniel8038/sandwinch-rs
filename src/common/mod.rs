@@ -2,6 +2,7 @@ pub mod abi;
 pub mod alert;
 pub mod bytecoode;
 pub mod constants;
+pub mod evm;
 pub mod execution;
 pub mod pools;
 pub mod tokens;
