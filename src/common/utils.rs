@@ -73,7 +73,18 @@ pub fn is_main_currency(token_address: H160) -> bool {
     let main_currencies = vec![to_h160(WETH), to_h160(USDT), to_h160(USDC)];
     main_currencies.contains(&token_address)
 }
+pub fn is_weth(token_address: H160) -> bool {
+    token_address == H160::from_str(WETH).unwrap()
+}
 /// 函数接收两个代币地址，返回主要代币和目标代币的地址对
+/**
+ * 目的：我们只关注至少包含一个主要代币的交易对 当有两个主要代币时，权重高的放前面（固定顺序）当只有一个主要代币时，主要代币放前面
+ * 把所有的交易对都规范成：
+ * WETH/XXX
+ * USDC/XXX
+ * USDT/XXX
+ * 这样的固定格式，方便后续的处理。
+ */
 pub fn return_main_and_target_currency(token0: H160, token1: H160) -> Option<(H160, H160)> {
     let token0_supported = is_main_currency(token0);
     let token1_supported = is_main_currency(token1);
@@ -134,6 +145,22 @@ impl MainCurrency {
             MainCurrency::USDT => 2,
             MainCurrency::USDC => 1,
             MainCurrency::Default => 3, // default is WETH
+        }
+    }
+    pub fn decimals(&self) -> u8 {
+        match self {
+            MainCurrency::WETH => WETH_DECIMALS,
+            MainCurrency::USDT => USDC_DECIMALS,
+            MainCurrency::USDC => USDC_DECIMALS,
+            MainCurrency::Default => WETH_DECIMALS,
+        }
+    }
+    pub fn balance_slot(&self) -> i32 {
+        match self {
+            MainCurrency::WETH => WETH_BALANCE_SLOT,
+            MainCurrency::USDT => USDT_BALANCE_SLOT,
+            MainCurrency::USDC => USDC_BALANCE_SLOT,
+            MainCurrency::Default => WETH_BALANCE_SLOT,
         }
     }
 }

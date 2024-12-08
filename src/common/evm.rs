@@ -1,3 +1,5 @@
+use std::sync::Arc;
+
 use ethers::types::*;
 /// 记录目标交易(被夹在三明治交易中间的交易)的详细信息
 /// 受害者hash
@@ -17,4 +19,10 @@ pub struct VictimTx {
     pub gas_price: U256,
     /// 交易的 gas 上限,某些情况下可能没有设置
     pub gas_limit: Option<u64>,
+}
+#[derive(Clone)]
+pub struct EvmSimulator<M> {
+    pub provider: Arc<M>,
+    pub owner: H160,
+    pub evm: E,
 }

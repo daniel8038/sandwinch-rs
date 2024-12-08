@@ -1,15 +1,15 @@
 use anyhow::Result;
 use ethers::{
-    abi::Bytes,
+    abi::{Bytes, ParamType},
     types::{
         transaction::eip2930::AccessList, CallConfig, CallFrame, CallLogFrame,
         GethDebugBuiltInTracerConfig, GethDebugBuiltInTracerType, GethDebugTracerConfig,
         GethDebugTracerType, GethDebugTracingCallOptions, GethTrace, GethTraceFrame, H160, H256,
-        U256,
+        U256, U64,
     },
 };
 use ethers_providers::{Middleware, Provider, Ws};
-use std::{collections::HashMap, sync::Arc};
+use std::{collections::HashMap, str::FromStr, sync::Arc};
 
 use crate::common::{evm::VictimTx, pools::Pool, utils::return_main_and_target_currency};
 
@@ -163,7 +163,7 @@ pub async fn extract_swap_info(
     if frame.is_none() {
         return Ok(swap_info_vec);
     }
-    let frame = frame.unwrap();
+    let frame: CallFrame = frame.unwrap();
     let mut logs = Vec::new();
     extract_logs(&frame, &mut logs);
     // 识别 Uniswap V2 的 swap 事件
@@ -188,11 +188,64 @@ pub async fn extract_swap_info(
                         let pool = pool.unwrap();
                         let token0 = pool.token0;
                         let token1 = pool.token1;
+                        // 获取主要货币 与 目标货币  主要货币是否为token0
                         let (main_currency, target_token, token0_is_main) =
                             match return_main_and_target_currency(token0, token1) {
                                 Some(out) => (out.0, out.1, out.0 == token0),
                                 None => continue,
                             };
+                        let (in0, _, _, out1) = match ethers::abi::decode(
+                            &[
+                                ParamType::Uint(256),
+                                ParamType::Uint(256),
+                                ParamType::Uint(256),
+                                ParamType::Uint(256),
+                            ],
+                            // 从 Option 中获取值，如果是 None 则 panic
+                            log.data.as_ref().unwrap(),
+                        ) {
+                            Ok(input) => {
+                                let uints: Vec<U256> = input
+                                    .into_iter()
+                                    // 对迭代器中的每个元素进行转换：
+                                    // - to_owned(): 创建一个拥有所有权的副本
+                                    // - into_uint(): 转换为无符号整数
+                                    // - unwrap(): 获取转换结果
+                                    .map(|i| i.to_owned().into_int().unwrap())
+                                    .collect();
+                                (uints[0], uints[1], uints[2], uints[3])
+                            }
+                            _ => {
+                                let zero = U256::zero();
+                                (zero, zero, zero, zero)
+                            }
+                        };
+                        // 判断交易方向 判断用户是在买入还是卖出主要代币
+                        let zero_for_one = (in0 > U256::zero()) && (out1 > U256::zero());
+                        // token0
+                        let direction = if token0_is_main {
+                            if zero_for_one {
+                                SwapDirection::Buy
+                            } else {
+                                SwapDirection::Sell
+                            }
+                        } else {
+                            if zero_for_one {
+                                SwapDirection::Sell
+                            } else {
+                                SwapDirection::Buy
+                            }
+                        };
+                        let swap_info = SwapInfo {
+                            tx_hash,
+                            target_pair: pair_address,
+                            main_currency,
+                            target_token,
+                            version: 2,
+                            token0_is_main,
+                            direction,
+                        };
+                        swap_info_vec.push(swap_info);
                     }
                 }
             }
@@ -216,5 +269,54 @@ pub fn extract_logs(call_frame: &CallFrame, logs: &mut Vec<CallLogFrame>) {
             // 递归处理每个子调用
             extract_logs(call, logs);
         }
+    }
+}
+///所有三明治机会Vec
+#[derive(Debug, Default, Clone)]
+pub struct BatchSandwich {
+    pub sandwiches: Vec<Sandwich>,
+}
+// 模拟整个三明治套利过程
+// 1. 记录初始状态（余额、流动性等）
+// 2. 执行前置交易（frontrun）
+// 3. 执行目标交易（victim tx）
+// 4. 执行后置交易（backrun）
+// 5. 计算收益和成本
+impl BatchSandwich {
+    /// 生成唯一标识 "0x12345678-0x98765432-xxxxx"
+    pub fn bundle_id(&self) -> String {
+        let mut tx_hashes = Vec::new();
+        for sandwich in &self.sandwiches {
+            let tx_hash = sandwich.victim_tx.tx_hash;
+            let tx_hash_4_bytes = &format!("{:?}", tx_hash)[0..10];
+            tx_hashes.push(String::from_str(tx_hash_4_bytes).unwrap());
+        }
+        tx_hashes.sort();
+        tx_hashes.dedup();
+        tx_hashes.join("-")
+    }
+    // 获取目标交易哈希
+    pub fn victim_tx_hashes(&self) {}
+    // 获取目标代币
+    pub fn target_tokens(&self) {}
+    // 获取目标交易对
+    pub fn target_v2_pairs(&self) {}
+    // 编码前置交易（买入）
+    pub fn encode_frontrun_tx() {}
+    // 编码后置交易（卖出）
+    pub fn encode_backrun_tx() {}
+    // 模拟执行
+    pub async fn simulate(
+        &self,
+        provider: Arc<Provider<Ws>>,
+        owner: Option<H160>,
+        block_number: U64,
+        base_fee: U256,
+        max_fee: U256,
+        front_access_list: Option<AccessList>,
+        back_access_list: Option<AccessList>,
+        bot_address: Option<H160>,
+    ) {
+        let mut simulator = 
     }
 }

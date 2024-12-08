@@ -10,7 +10,7 @@ use crate::{
         utils::calculate_next_block_base_fee,
     },
     sandwich::{
-        simulation::{PendingTxInfo, Sandwich},
+        simulation::{extract_swap_info, PendingTxInfo, Sandwich},
         streams::NewBlock,
     },
 };
@@ -65,6 +65,7 @@ pub async fn run_sandwich_strategy(provider: Arc<Provider<Ws>>, event_sender: Se
         .await
         .unwrap()
         .unwrap();
+    // 最新区块信息 新的区块事件 会不断覆盖这个数据结构
     let mut new_block = NewBlock {
         block_number: block.number.unwrap(),
         base_fee: block.base_fee_per_gas.unwrap(),
@@ -136,6 +137,7 @@ pub async fn run_sandwich_strategy(provider: Arc<Provider<Ws>>, event_sender: Se
                     pending_txs.retain(|_, v| {
                         new_block.block_number - v.pending_tx.added_block.unwrap() < U64::from(3)
                     });
+                    // 确保 promising_sandwiches 中的交易都存在于 pending_txs 中  每次新区区块都要判定一次
                     promising_sandwiches.retain(|h, _| pending_txs.contains_key(h));
                 }
                 Event::PendingTx(mut pending_tx) => {
@@ -178,7 +180,33 @@ pub async fn run_sandwich_strategy(provider: Arc<Provider<Ws>>, event_sender: Se
                         }
                         _ => {}
                     }
-                    // 如果应该添加进三明治
+                    // 如果应该添加进三明治 解析出 swap 信息
+                    let swap_info = if should_add {
+                        match extract_swap_info(&provider, &new_block, &pending_tx, &pools_map)
+                            .await
+                        {
+                            Ok(swap_info) => swap_info,
+                            Err(e) => Vec::new(),
+                        }
+                    } else {
+                        Vec::new()
+                    };
+                    // 如果有 swap 信息
+                    if swap_info.len() > 0 {
+                        pending_tx.added_block = Some(new_block.block_number);
+                        let pending_tx_info = PendingTxInfo {
+                            pending_tx: pending_tx.clone(),
+                            touched_pairs: swap_info.clone(),
+                        };
+                        pending_txs.insert(tx_hash, pending_tx_info.clone());
+                        // info!(
+                        //     "🔴 V{:?} TX ADDED: {:?} / Pending txs: {:?}",
+                        //     pending_tx_info.touched_pairs.get(0).unwrap().version,
+                        //     tx_hash,
+                        //     pending_txs.len()
+                        // );
+                        match apptizer() {}
+                    }
                 }
             },
             _ => {}
